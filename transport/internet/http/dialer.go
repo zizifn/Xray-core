@@ -4,8 +4,10 @@ import (
 	"context"
 	gotls "crypto/tls"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -109,7 +111,14 @@ func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *in
 	}
 
 	if tlsConfigs != nil {
-		transport.TLSClientConfig = tlsConfigs.GetTLSConfig(tls.WithDestination(dest))
+		keyLogFile, err := os.OpenFile("SSLKEY.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Fatal(err)
+		}
+		// defer keyLogFile.Close()
+
+		transport.TLSClientConfig = tlsConfigs.GetTLSConfig(tls.WithDestination(dest), tls.WithKeyLogWriter(keyLogFile))
+
 	}
 
 	if httpSettings.IdleTimeout > 0 || httpSettings.HealthCheckTimeout > 0 {

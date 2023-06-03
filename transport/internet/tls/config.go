@@ -5,10 +5,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"io"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/xtls/xray-core/common/log"
 	"github.com/xtls/xray-core/common/net"
 	"github.com/xtls/xray-core/common/ocsp"
 	"github.com/xtls/xray-core/common/platform/filesystem"
@@ -283,6 +285,17 @@ func (c *Config) verifyPeerCert(rawCerts [][]byte, verifiedChains [][]*x509.Cert
 	return nil
 }
 
+func WithKeyLogWriter(writer io.Writer) Option {
+	return func(config *tls.Config) {
+		log.Record(&log.GeneralMessage{
+			Severity: log.Severity_Info,
+			Content:  `TLS key logging enabled.`,
+		})
+
+		config.KeyLogWriter = writer
+	}
+}
+
 // GetTLSConfig converts this Config into tls.Config.
 func (c *Config) GetTLSConfig(opts ...Option) *tls.Config {
 	root, err := c.getCertPool()
@@ -376,6 +389,15 @@ func WithDestination(dest net.Destination) Option {
 		if config.ServerName == "" {
 			config.ServerName = dest.Address.String()
 		}
+	}
+}
+
+func WithDestinationKeyLogWriter(dest net.Destination, keyLogWriter io.Writer) Option {
+	return func(config *tls.Config) {
+		if config.ServerName == "" {
+			config.ServerName = dest.Address.String()
+		}
+		config.KeyLogWriter = keyLogWriter
 	}
 }
 

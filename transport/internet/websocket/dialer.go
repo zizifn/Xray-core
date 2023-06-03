@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	gonet "net"
 	"net/http"
 	"os"
@@ -83,8 +84,13 @@ func dialWebSocket(ctx context.Context, dest net.Destination, streamSettings *in
 	protocol := "ws"
 
 	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
+		keyLogFile, err := os.OpenFile("SSLKEY.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+		if err != nil {
+			log.Fatal(err)
+		}
 		protocol = "wss"
-		tlsConfig := config.GetTLSConfig(tls.WithDestination(dest), tls.WithNextProto("http/1.1"))
+		tlsConfig := config.GetTLSConfig(tls.WithDestination(dest), tls.WithNextProto("http/1.1"), tls.WithKeyLogWriter(keyLogFile))
+		log.Println("TLSConfig:", tlsConfig.KeyLogWriter)
 		dialer.TLSClientConfig = tlsConfig
 		if fingerprint := tls.GetFingerprint(config.Fingerprint); fingerprint != nil {
 			dialer.NetDialTLSContext = func(_ context.Context, _, addr string) (gonet.Conn, error) {
